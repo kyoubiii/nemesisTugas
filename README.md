@@ -1,7 +1,7 @@
 # Nemesis
 Nemesis is the public-facing investigative interface as the result of Operation Diponegoro, initiated by Abil Sudarman School of Artificial Intelligence. We ingest millions of rows of procurement data, surface anomalies, and make the findings legible to citizens, journalists, and policymakers.
 
-assai.id/nemesis
+https://assai.id/nemesis
 
 
 > End the vampire ball.
@@ -13,7 +13,6 @@ Mohon bersabar, file-file sedang dalam proses finalisasi.
 | Asset | Status | ETA |
 |-------|--------|-----|
 | Dashboard URL | 🟡 In progress | 17 April |
-| SQL / SQLite / Raw Dataset Files | 🟡 In progress | 18 April |
 
 Stay tuned.
 
