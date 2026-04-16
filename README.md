@@ -17,21 +17,22 @@ Stay tuned.
 
 ## Downloads
 
-### Raw Dataset (Analyzed by GPT-5.4)
+### Dataset
 
-[Download SIRUP dataset (analyzed)](https://contenflowstorage.blob.core.windows.net/shared/gpt-5.4-analyzed-sirup.zip?sp=r&st=2026-04-16T12:00:08Z&se=2029-04-16T20:15:08Z&spr=https&sv=2025-11-05&sr=b&sig=m%2FATynnnZq5gSdP8xWWw2ew41EMJZz09fDQRwpbWolk%3D)
+[Download SIRUP raw jsonl dataset (analyzed by GPT-5.4)](https://contenflowstorage.blob.core.windows.net/shared/gpt-5.4-analyzed-sirup.zip?sp=r&st=2026-04-16T12:00:08Z&se=2029-04-16T20:15:08Z&spr=https&sv=2025-11-05&sr=b&sig=m%2FATynnnZq5gSdP8xWWw2ew41EMJZz09fDQRwpbWolk%3D)
+[Download SIRUP dataset SQL Ver (analyzed by GPT-5.4-mini)](https://contenflowstorage.blob.core.windows.net/shared/datasets/dashboard.sql?sp=r&st=2026-04-16T12:16:15Z&se=2029-04-16T20:31:15Z&spr=https&sv=2025-11-05&sr=b&sig=sKPH9uazyLcYcSwhARcEwVSG%2FTld9VnGJgZ2mOZIxrA%3D)
 
 ### 1. Prepare the Database
 
 Download and unzip the raw dataset, then convert it to SQLite:
 
 ```bash
-# Unzip the dataset
-unzip gpt-5.4-analyzed-sirup.zip
+# Convert raw jsonl data / sql data
 
-# Convert to SQLite (adjust based on source format)
-# Place the resulting .sqlite file at the expected path:
+# Place the resulting .SQL file at the expected path:
 mv dashboard.sqlite backend/data/dashboard.sqlite
+
+
 ```
 
 The backend expects the database at `backend/data/dashboard.sqlite`.
