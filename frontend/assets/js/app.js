@@ -1,8 +1,8 @@
 (() => {
   const API_BASE_URL = (window.DASHBOARD_API_BASE_URL || "http://127.0.0.1:3000/api").replace(/\/$/, "");
 
-  if (!window.L) {
-    console.error("Leaflet failed to load.");
+  if (!window.maplibregl || !window.AuditMap) {
+    console.error("MapLibre GL or AuditMap failed to load.");
     return;
   }
 
@@ -68,8 +68,6 @@
   let dashboardData = null;
   let regionsByKey = new Map();
   let provincesByKey = new Map();
-  let map = null;
-  let geoLayer = null;
 
   function escapeHtml(value) {
     return String(value)
@@ -749,13 +747,14 @@
     const area = getActiveAreaByKey(areaKey);
     const visible = areaMatchesCurrentView(area);
     const selected = state.selectedAreaKey === areaKey;
+    const strokeOpacity = (selected ? 1 : 0.2) * (visible ? 0.85 : 0.2);
 
     return {
       fillColor: area ? getLegendColor(area.totalPotentialWaste) : "#243155",
       fillOpacity: selected ? 0.72 : visible ? 0.52 : 0.08,
-      color: selected ? "#f0d8a8" : "rgba(181,168,130,0.2)",
-      weight: selected ? 2.1 : 0.8,
-      opacity: visible ? 0.85 : 0.2,
+      strokeColor: selected ? "#f0d8a8" : "#b5a882",
+      strokeWidth: selected ? 2.1 : 0.8,
+      strokeOpacity,
     };
   }
 
@@ -821,39 +820,7 @@
     );
   }
 
-  function ensureMap() {
-    if (map) {
-      return;
-    }
-
-    map = L.map(dom.mapRoot, {
-      center: [-2.5, 118],
-      zoom: 5,
-      minZoom: 4,
-      maxZoom: 12,
-      attributionControl: false,
-    });
-
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png", {
-      subdomains: "abcd",
-      maxZoom: 19,
-    }).addTo(map);
-
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png", {
-      subdomains: "abcd",
-      maxZoom: 19,
-      opacity: 0.35,
-    }).addTo(map);
-  }
-
   function renderGeoLayer(fitToBounds) {
-    ensureMap();
-
-    if (geoLayer) {
-      geoLayer.remove();
-      geoLayer = null;
-    }
-
     const geo = getActiveGeo();
 
     if (!geo || !Array.isArray(geo.features) || !geo.features.length) {
@@ -861,42 +828,18 @@
       return;
     }
 
-    geoLayer = L.geoJSON(geo, {
-      style: featureStyle,
-      onEachFeature: (feature, layer) => {
-        const areaKey = getFeatureAreaKey(feature);
-        const area = getActiveAreaByKey(areaKey);
-        layer.bindPopup(popupHtml(area), { maxWidth: 320 });
-        layer.on({
-          mouseover: (event) => {
-            if (!area) {
-              return;
-            }
-
-            event.target.setStyle({
-              weight: 1.8,
-              color: "#f0d8a8",
-              fillOpacity: Math.min(featureStyle(feature).fillOpacity + 0.16, 0.85),
-            });
-            event.target.bringToFront();
-          },
-          mouseout: (event) => {
-            geoLayer.resetStyle(event.target);
-          },
-          click: () => {
-            openAreaModal(areaKey);
-          },
-        });
+    AuditMap.render(
+      dom.mapRoot,
+      geo,
+      {
+        getFeatureStyle: featureStyle,
+        getPopupHtml: (areaKey) => popupHtml(getActiveAreaByKey(areaKey)),
+        onAreaClick: openAreaModal,
+        fitBounds: fitToBounds,
+        isProvinceView: isProvinceView(),
       },
-    }).addTo(map);
-
-    const bounds = geoLayer.getBounds();
-
-    if (fitToBounds && bounds.isValid()) {
-      map.fitBounds(bounds.pad(isProvinceView() ? 0.08 : 0.05));
-    }
-
-    clearMapStatus();
+      clearMapStatus
+    );
   }
 
   function initMap() {
@@ -904,9 +847,7 @@
   }
 
   function refreshMapStyles() {
-    if (geoLayer) {
-      geoLayer.setStyle(featureStyle);
-    }
+    AuditMap.refresh(getActiveGeo(), featureStyle);
   }
 
   function renderPackageTableRows(items) {
@@ -1239,6 +1180,7 @@
   }
 
   function openAreaModal(areaKey) {
+    AuditMap.closePopup();
     state.selectedAreaKey = areaKey;
     state.selectedOwnerKey = null;
     state.modal = {
@@ -1261,6 +1203,7 @@
   }
 
   function openOwnerModal(ownerName, ownerType) {
+    AuditMap.closePopup();
     state.selectedAreaKey = null;
     state.selectedOwnerKey = getOwnerCardKey(ownerType, ownerName);
     state.modal = {
