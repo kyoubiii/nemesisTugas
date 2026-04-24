@@ -1,5 +1,5 @@
 (() => {
-  const API_BASE_URL = (window.DASHBOARD_API_BASE_URL || "http://127.0.0.1:3000/api").replace(/\/$/, "");
+  const API_BASE_URL = (window.DASHBOARD_API_BASE_URL || "https://9g4qcr-3000.csb.app/api").replace(/\/$/, "");
 
   if (!window.maplibregl || !window.AuditMap) {
     console.error("MapLibre GL or AuditMap failed to load.");
