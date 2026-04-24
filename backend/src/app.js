@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const { CORS_ORIGIN } = require("./config");
-const { getBootstrapPayload, getOwnerPackages, getRegionPackages, getProvincePackages } = require("./dashboard-repository");
+const { getBootstrapPayload, getOwnerPackages, getRegionPackages, getProvincePackages, getOPDBudgetBreakdown } = require("./dashboard-repository");
 
 function resolveCorsOrigin() {
   if (CORS_ORIGIN === "*") {
@@ -51,6 +51,62 @@ function createApp(db) {
     }
 
     res.json(payload);
+  });
+
+// 👇 RUTE BARU UNTUK GRAFIK OPD 👇
+  app.get('/api/stats/opd-breakdown', (req, res) => {
+    try {
+      // Panggil langsung fungsinya karena sudah di-import di atas
+      const data = getOPDBudgetBreakdown(db);
+      res.json(data);
+    } catch (error) {
+      console.error("Gagal mengambil data statistik OPD:", error);
+      res.status(500).json({ error: "Gagal memuat data" });
+    }
+  });
+  // 👆 AKHIR RUTE BARU 👆
+
+  // 👇 RUTE INTEGRASI UMKM (VERSI CONTOH NYATA) 👇
+  app.get('/api/stats/potensi-umkm', (req, res) => {
+    try {
+      const payload = {
+        trendData: [
+          { tahun: 2019, jumlah: 401 },
+          { tahun: 2020, jumlah: 582 },
+          { tahun: 2021, jumlah: 361 },
+          { tahun: 2022, jumlah: 1171 },
+          { tahun: 2023, jumlah: 2330 },
+          { tahun: 2024, jumlah: 2922 },
+          { tahun: 2025, jumlah: 1999 }
+        ],
+        regionData: [
+          { 
+            wilayah: "Soreang & Katapang", 
+            sektor: "Konveksi & Seragam", 
+            contoh: "Kawal Jahit Soreang" 
+          },
+          { 
+            wilayah: "Majalaya & Paseh", 
+            sektor: "Tekstil & Sarung", 
+            contoh: "PT. Sandang Majalaya Textile (Samatex)" 
+          },
+          { 
+            wilayah: "Baleendah (Jelekong)", 
+            sektor: "Seni Wayang & Lukis", 
+            contoh: "Girilaya Wayang Golek Galeri" 
+          },
+          { 
+            wilayah: "Ciwidey & Pasirjambu", 
+            sektor: "Olahan Makanan & Agribisnis", 
+            contoh: "Pandawa Pusat Oleh-oleh Ciwidey" 
+          }
+        ]
+      };
+      
+      res.json(payload);
+    } catch (error) {
+      res.status(500).json({ error: "Gagal memuat data" });
+    }
   });
 
   app.get("/api/owners/packages", (req, res) => {

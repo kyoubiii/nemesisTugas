@@ -7,8 +7,8 @@
   }
 
   const state = {
-    mapFilter: "central",
-    tab: "all",
+    mapFilter: "kabkota",
+    tab: "kabupaten",
     selectedAreaKey: null,
     selectedOwnerKey: null,
     search: "",
@@ -414,6 +414,15 @@
     if (!payload || typeof payload !== "object") {
       throw new Error("Bootstrap payload tidak valid.");
     }
+    // 👇 MODIFIKASI: Filter GeoJSON agar hanya berisi Kabupaten Bandung 👇
+    if (payload.geo && Array.isArray(payload.geo.features)) {
+      payload.geo.features = payload.geo.features.filter(feature => {
+        const name = feature.properties.regionName || feature.properties.displayName || "";
+        // Hanya simpan yang ada kata "Bandung" tapi tidak ada kata "Barat"
+        return name.includes("Bandung") && !name.includes("Barat");
+      });
+    }
+    // 👆 SELESAI MODIFIKASI 👆
 
     return {
       summary: payload.summary || {
@@ -542,7 +551,7 @@
       {
         label: "Total Potensi Pemborosan",
         value: `Rp ${formatCompactCurrency(summary.totalPotentialWaste)}`,
-        sublabel: "Nilai nasional raw, tanpa duplikasi multi-lokasi",
+        sublabel: "Nilai khusus wilayah Kabupaten Bandung",
       },
       {
         label: "Paket Prioritas Audit",
@@ -552,7 +561,7 @@
       {
         label: "Total Pagu Teraudit",
         value: `Rp ${formatCompactCurrency(summary.totalBudget)}`,
-        sublabel: "Akumulasi pagu dari seluruh artifact audit",
+        sublabel: "Akumulasi pagu dari instansi Pemkab Bandung",
       },
       {
         label: "Paket Terpetakan",
@@ -563,6 +572,7 @@
   }
 
   function renderLegend() {
+    dom.legend.style.display = "none";
     const legend = getActiveLegend();
     const title = isProvinceView()
       ? "Potensi Pemborosan Paket Pemprov per Provinsi"
@@ -591,6 +601,7 @@
   }
 
   function renderFilterChips() {
+    dom.mapFilters.style.display = "none";
     dom.mapFilters.innerHTML = FILTERS.map(
       (filter) =>
         `<div class="fc${filter.key === state.mapFilter ? " a" : ""}" onclick="${actionCall("setMapFilter", filter.key)}">${escapeHtml(
@@ -600,6 +611,7 @@
   }
 
   function renderTabs() {
+    dom.tabs.style.display = "none";
     const provinceView = isProvinceView();
     const centralOwnerMode = isCentralOwnerMode();
 
@@ -680,66 +692,51 @@
         .join("");
   }
 
-  function renderSidebarContent() {
-    if (!dashboardData) {
-      renderSidebarMessage("Data dashboard belum tersedia.", true);
-      return;
-    }
+function renderSidebarContent() {
+    // Membajak sidebar untuk dijadikan Panel Inovasi Daerah
+    dom.sidebarContent.innerHTML = `
+      <div style="padding: 15px;">
+          <div style="font-size: 11px; color: var(--t3); text-transform: uppercase; letter-spacing: 1px; font-weight: bold; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--b2);">
+               Panel 
+          </div>
 
-    if (isCentralOwnerMode()) {
-      renderOwnerSidebarContent();
-      return;
-    }
+          <div class="pi" onclick="bukaDeteksiAnomali()" style="cursor: pointer; border-left: 4px solid var(--brick); background: rgba(168,60,46,0.05);">
+              <div class="pit"><div class="pn" style="font-size: 14px; color: #f0d8a8;">Deteksi Anomali ATK dan Makan/Minum</div></div>
+              <div style="font-size:11.5px; color:var(--t1); margin-top:8px; line-height: 1.4;">
+                  Sistem filter otomatis mendeteksi paket berisiko tinggi:<br>
+                  <span style="color: var(--t3);">&bull; Makan/Minum > Rp 200 Juta<br>&bull; ATK > Rp 100 Juta</span>
+              </div>
+          </div>
 
-    const areas = getFilteredAreasForSidebar();
+          <div class="pi" onclick="bukaRoroJonggrang()" style="cursor: pointer; border-left: 4px solid var(--rose); background: rgba(212,169,153,0.05); margin-top: 15px;">
+              <div class="pit"><div class="pn" style="font-size: 14px; color: #f0d8a8;">Detektor Proyek Akhir Tahun</div></div>
+              <div style="font-size:11.5px; color:var(--t1); margin-top:8px; line-height: 1.4;">
+                  Mendeteksi otomatis proyek fisik/konstruksi bernilai > Rp 1 Miliar yang rawan mark-up jika dikebut di akhir tahun.
+              </div>
+          </div>
 
-    if (!areas.length) {
-      dom.sidebarContent.innerHTML =
-        sortControl() +
-        `<div class="panel-msg">Tidak ada ${escapeHtml(
-          isProvinceView() ? "provinsi" : "region"
-        )} yang cocok dengan filter saat ini.</div>`;
-      return;
-    }
+          <div class="pi" onclick="bukaPerjalananDinas()" style="cursor: pointer; border-left: 4px solid var(--sage); background: rgba(123,134,163,0.05); margin-top: 15px;">
+              <div class="pit"><div class="pn" style="font-size: 14px; color: #f0d8a8;">Detektor Perjalanan Dinas</div></div>
+              <div style="font-size:11.5px; color:var(--t1); margin-top:8px; line-height: 1.4;">
+                  Mengawasi paket perjalanan dinas, kunjungan kerja, atau rapat koordinasi dengan anggaran fantastis (> Rp 300 Jt).
+              </div>
+          </div>
 
-    const areaEntries = areas.map((area) => ({
-      area,
-      metrics: getSidebarAreaMetrics(area),
-    }));
-    const maxWaste = Math.max(...areaEntries.map(({ metrics }) => metrics.totalPotentialWaste), 1);
-    const ownerLabel = activeSidebarOwnerLabel();
+          <div class="pi" onclick="bukaRekomendasiUMKM()" style="cursor: pointer; border-left: 4px solid var(--gold); background: rgba(181,168,130,0.05); margin-top: 15px;">
+              <div class="pit"><div class="pn" style="font-size: 14px; color: #f0d8a8;">Potensi UMKM Terdekat</div></div>
+              <div style="font-size:11.5px; color:var(--t1); margin-top:8px; line-height: 1.4;">
+                  Rekomendasi UMKM Lokal di wilayah Kab. Bandung yang berpotensi dan dapat menjadi penyuplai proyek pemerintah.
+              </div>
+          </div>
 
-    dom.sidebarContent.innerHTML =
-      sortControl() +
-      areaEntries
-        .map(({ area, metrics }, index) => {
-          const areaKey = getAreaKey(area);
-          const selectedClass = state.selectedAreaKey === areaKey ? " a" : "";
-
-          return (
-            `<div class="pi${selectedClass}" onclick="${actionCall("openAreaModal", areaKey)}">` +
-            `<div class="pit"><div class="pn"><span style="color:var(--t3);font-size:9px;margin-right:5px">#${index + 1}</span>${escapeHtml(
-              area.displayName
-            )}</div><div class="tbd ${areaBadgeClass(area)}">${escapeHtml(areaBadgeLabel(area))}</div></div>` +
-            `<div style="font-size:9.5px;color:var(--t3);margin-bottom:4px">${escapeHtml(areaSecondaryLine(area))}</div>` +
-            `<div><span class="ppv">Rp ${escapeHtml(formatCompactCurrency(metrics.totalPotentialWaste))}</span><span class="ppl"> &middot; ${escapeHtml(
-              formatNumber(metrics.totalPriorityPackages)
-            )} prioritas</span></div>` +
-            `<div class="bw"><div class="bf" style="width:${Math.max(
-              4,
-              Math.round((metrics.totalPotentialWaste / maxWaste) * 100)
-            )}%;background:${escapeAttr(getLegendColor(metrics.totalPotentialWaste))}"></div></div>` +
-            `<div class="ps"><div class="pst">Total Paket: <strong>${escapeHtml(
-              formatNumber(metrics.totalPackages)
-            )}</strong></div><div class="pst">Pemilik: <strong>${escapeHtml(ownerLabel)}</strong></div></div>` +
-            `<div class="owner-mix">${escapeHtml(areaOwnerSummary(area))}</div>` +
-            `<div class="waste-row"><span class="waste-label">Pagu Teraudit</span><span class="waste-val">${escapeHtml(
-              `Rp ${formatCompactCurrency(metrics.totalBudget)}`
-            )}</span></div>` +
-            `</div>`
-          );
-        })
-        .join("");
+          <div class="pi" onclick="bukaGrafikAnggaran()" style="cursor: pointer; border-left: 4px solid var(--t2); background: rgba(123,134,163,0.05); margin-top: 15px;">
+              <div class="pit"><div class="pn" style="font-size: 14px; color: #f0d8a8;"> Analisis Pagu OPD</div></div>
+              <div style="font-size:11.5px; color:var(--t1); margin-top:8px; line-height: 1.4;">
+                  Visualisasi postur anggaran berdasarkan instansi/dinas untuk melihat fokus pembangunan daerah.
+              </div>
+          </div>
+      </div>
+    `;
   }
 
   function featureStyle(feature) {
@@ -856,6 +853,43 @@
           .map((item) => {
             const packageUrl = buildInaprocUrl(item.sourceId);
 
+           // 👇 OTAK DETEKTIF FRONTTEND (UPDATE RORO JONGGRANG) 👇
+            const namaPaket = (item.packageName || "").toLowerCase();
+            const pagu = Number(item.budget) || 0;
+            
+            let isAnomali = false;
+            let alasanAnomali = "";
+            let warnaTeks = "#dc3545"; // Default merah bata
+            let warnaBackground = "rgba(220, 53, 69, 0.15)";
+
+            // 1. Deteksi ATK
+            if (namaPaket.includes("atk") && pagu > 100000000) {
+                isAnomali = true;
+                alasanAnomali = "⚠️ Anomali Lokal: Pagu belanja ATK sangat tinggi (> Rp 100 Jt)";
+            } 
+            // 2. Deteksi Makan/Minum
+            else if ((namaPaket.includes("makan") || namaPaket.includes("minum")) && pagu > 200000000) {
+                isAnomali = true;
+                alasanAnomali = "⚠️ Anomali Lokal: Pagu Makan/Minum fantastis (> Rp 200 Jt)";
+            }
+            // 3. Deteksi Roro Jonggrang (Baru!)
+            else if ((namaPaket.includes("pembangunan") || namaPaket.includes("rehabilitasi")) && pagu > 1000000000) {
+                isAnomali = true;
+                alasanAnomali = "⏱️ Rawan Pengerjaan Akhir Tahun: Proyek fisik raksasa (> Rp 1 Miliar). Waspada pengerjaan akhir tahun!";
+                warnaTeks = "#d4a999"; // Warna Peach/Rose khas Nemesis
+                warnaBackground = "rgba(212, 169, 153, 0.15)";
+            }
+            else if ((namaPaket.includes("perjalanan dinas") || namaPaket.includes("kunjungan") || namaPaket.includes("rapat")) && pagu > 300000000) {
+                isAnomali = true;
+                alasanAnomali = "✈️ Indikasi Pemborosan: Anggaran Perjalanan Dinas / Rapat Koordinasi sangat tinggi (> Rp 300 Jt).";
+                warnaTeks = "#7b86a3"; // Warna Biru Nemesis (Sage)
+                warnaBackground = "rgba(123, 134, 163, 0.2)"; // Latar Biru transparan
+            }
+
+            const rowStyle = isAnomali ? ` style="background-color: ${warnaBackground};"` : '';
+            const customReason = isAnomali ? `<div style="color: ${warnaTeks}; font-weight: bold; margin-bottom: 8px;">${escapeHtml(alasanAnomali)}</div>` : '';
+            // 👆 AKHIR OTAK DETEKTIF 👆
+
             return (
               `<tr${
                 packageUrl
@@ -865,7 +899,7 @@
                       `dashboardActions.handlePackageRowKeydown(event, ${jsArg(item.sourceId)})`
                     )}"`
                   : ""
-              }>` +
+              }${rowStyle}>` + 
               `<td class="mono">${escapeHtml(String(item.sourceId || item.id))}</td>` +
               `<td class="pkg">${escapeHtml(item.packageName)}</td>` +
               `<td><div class="tbl-owner">${escapeHtml(item.ownerName)}</div><div class="tbl-sub">${escapeHtml(
@@ -886,7 +920,7 @@
               )};color:${escapeAttr(severityColor(item.audit.severity))}">${escapeHtml(
                 severityLabel(item.audit.severity)
               )}</span></td>` +
-              `<td class="reason">${escapeHtml(item.audit.reason || "-")}</td>` +
+              `<td class="reason">${customReason}${escapeHtml(item.audit.reason || "-")}</td>` +
               `</tr>`
             );
           })
@@ -1407,4 +1441,172 @@
 
   bindEvents();
   bootstrap();
+
+  // --- FUNGSI MODAL PANDUAN DATA ---
+  window.bukaPanduanData = function() {
+    document.getElementById('modalPanduan').style.display = 'block';
+  };
+
+  window.tutupPanduanData = function() {
+    document.getElementById('modalPanduan').style.display = 'none';
+  };
+
+  // --- FUNGSI PANEL INOVASI DAERAH ---
+
+  window.bukaDeteksiAnomali = function() {
+    // 1. Cari kunci wilayah (Region Key) untuk Kab. Bandung
+    const areaKeys = Array.from(regionsByKey.keys());
+    if (areaKeys.length > 0) {
+        const bandungKey = areaKeys[0]; // Karena sudah difilter, pasti ini Kab. Bandung
+        
+        // 2. Buka pop-up tabel untuk Kab. Bandung
+        openAreaModal(bandungKey);
+        
+        // 3. Otomatis ketik kata sandi "atk" (atau "makan") setelah pop-up terbuka
+        setTimeout(() => {
+            dashboardActions.setModalSearch("atk");
+        }, 600); // Jeda 0.6 detik agar animasi pop-up selesai dulu
+    }
+  };
+
+  // --- FUNGSI MODAL UMKM ---
+ window.bukaRekomendasiUMKM = async function() {
+    const trendContainer = document.getElementById('umkm-trend-container');
+    const regionContainer = document.getElementById('umkm-region-container');
+    
+    // Detektor Kotak Hilang
+    if (!trendContainer || !regionContainer) {
+        console.error("Wadah HTML tidak ditemukan! Pastikan id di index.html sudah di-update.");
+        return;
+    }
+
+    document.getElementById('modalUMKM').style.display = 'block';
+    
+    try {
+        const response = await fetch('http://127.0.0.1:3000/api/stats/potensi-umkm');
+        const data = await response.json(); 
+        
+        // --- 1. RENDER GRAFIK TREN ---
+        const maxData = Math.max(...data.trendData.map(d => d.jumlah));
+        trendContainer.innerHTML = data.trendData.map((item) => {
+            const heightPercent = (item.jumlah / maxData) * 100;
+            const isLastYear = item.tahun === 2025;
+            const barColor = isLastYear ? " #d4af37" : "var(--sage)";
+
+            return `
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%;">
+                <span style="color: #f0d8a8; font-size: 10px; font-weight: bold; margin-bottom: 3px;">${item.jumlah}</span>
+                <div style="width: 100%; background: ${barColor}; height: ${heightPercent}%; border-radius: 3px 3px 0 0; opacity: ${isLastYear ? '1' : '0.7'};"></div>
+                <span style="color: var(--t1); font-size: 11px; margin-top: 5px;">${item.tahun}</span>
+            </div>
+            `;
+        }).join('');
+
+        // --- 2. RENDER KARTU WILAYAH DENGAN CONTOH ---
+        regionContainer.innerHTML = data.regionData.map((umkm, index) => {
+            const warnaGaris = index % 2 === 0 ? " #d4af37" : "var(--sage)";
+            const warnaBg = index % 2 === 0 ? "rgba(181, 168, 130, 0.1)" : "rgba(123, 134, 163, 0.1)";
+
+            return `
+            <div style="background: ${warnaBg}; border-left: 3px solid ${warnaGaris}; padding: 12px; border-radius: 4px;">
+                <strong style="color: #f0d8a8; display: block; margin-bottom: 5px; font-size: 12px;">📍 Kec. ${umkm.wilayah}</strong>
+                <div style="color: var(--t1); font-size: 11px; margin-bottom: 8px;">Sektor: <strong style="color: white;">${umkm.sektor}</strong></div>
+                
+                <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px; border: 1px dashed ${warnaGaris}50;">
+                    <div style="color: var(--t3); font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">Rekomendasi Vendor:</div>
+                    <div style="color: ${warnaGaris}; font-size: 11px; font-weight: bold;">🏢 ${umkm.contoh}</div>
+                </div>
+            </div>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error(error);
+        trendContainer.innerHTML = '<p style="color: var(--brick);">Gagal menarik data UMKM.</p>';
+        regionContainer.innerHTML = '';
+    }
+  };
+  window.tutupModalUMKM = function() {
+    document.getElementById('modalUMKM').style.display = 'none';
+  };
+
+  window.bukaGrafikAnggaran = async function() {
+    const container = document.getElementById('opd-chart-container');
+    document.getElementById('modalGrafikOPD').style.display = 'block';
+    
+    try {
+        const response = await fetch('http://127.0.0.1:3000/api/stats/opd-breakdown'); 
+        const data = await response.json();
+        
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p style="text-align: center;">Data tidak ditemukan.</p>';
+            return;
+        }
+
+        const maxBudget = data[0].total_budget;
+
+        container.innerHTML = data.map((opd, index) => {
+            const percentage = ((opd.total_budget / maxBudget) * 100).toFixed(0);
+            const formattedBudget = new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                maximumFractionDigits: 0
+            }).format(opd.total_budget);
+
+            // Warna warni Nemesis untuk 5 ranking teratas
+            const barColor = index === 0 ? "var(--brick)" : index === 1 ? "var(--sage)" : index === 2 ? " #d4af37" : index === 3 ? "var(--rose)" : "var(--t2)";
+
+            return `
+                <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <strong style="color: #cdd4e6; font-size: 13px; letter-spacing: 0.5px;">${index + 1}. ${opd.name}</strong>
+                        <span style="color: ${barColor}; font-family: monospace; font-weight: bold; font-size: 14px;">${formattedBudget}</span>
+                    </div>
+                    <div style="width: 100%; background: rgba(0,0,0,0.3); border-radius: 6px; height: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);">
+                        <div style="width: ${percentage}%; background: ${barColor}; height: 100%; border-radius: 6px; box-shadow: 0 0 10px ${barColor}40;"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error("Gagal mengambil data OPD:", error);
+        container.innerHTML = '<p style="text-align: center; color: var(--brick);">Gagal memuat data dari database.</p>';
+    }
+  };
+
+  window.tutupGrafikAnggaran = function() {
+    document.getElementById('modalGrafikOPD').style.display = 'none';
+  };
+
+  window.bukaRoroJonggrang = function() {
+    const areaKeys = Array.from(regionsByKey.keys());
+    if (areaKeys.length > 0) {
+        const bandungKey = areaKeys[0];
+        
+        // Buka pop-up tabel untuk Kab. Bandung
+        openAreaModal(bandungKey);
+        
+        // Pancing dengan kata kunci "pembangunan" agar proyek fisik miliaran langsung muncul
+        setTimeout(() => {
+            dashboardActions.setModalSearch("pembangunan");
+        }, 600); 
+    }
+  };
+
+  window.bukaPerjalananDinas = function() {
+    const areaKeys = Array.from(regionsByKey.keys());
+    if (areaKeys.length > 0) {
+        const bandungKey = areaKeys[0];
+        
+        // Buka pop-up tabel untuk Kab. Bandung
+        openAreaModal(bandungKey);
+        
+        // Pancing dengan kata kunci "perjalanan dinas"
+        setTimeout(() => {
+            dashboardActions.setModalSearch("perjalanan dinas");
+        }, 600); 
+    }
+  };
+  
 })();

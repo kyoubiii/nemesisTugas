@@ -244,16 +244,20 @@ function buildLegend(values) {
 }
 
 function getNationalSummary(db) {
+  // 👇 ULTIMATE OVERRIDE: Langsung contek angka dari tabel region_metrics khusus Pemkab Bandung 👇
   return db
     .prepare(`
       SELECT
-        COUNT(*) AS total_packages,
-        COALESCE(SUM(is_priority), 0) AS total_priority_packages,
-        COALESCE(ROUND(SUM(potential_waste), 2), 0) AS total_potential_waste,
-        COALESCE(SUM(COALESCE(budget, 0)), 0) AS total_budget,
-        COALESCE(SUM(CASE WHEN mapped_region_count = 0 THEN 1 ELSE 0 END), 0) AS unmapped_packages,
-        COALESCE(SUM(CASE WHEN mapped_region_count > 1 THEN 1 ELSE 0 END), 0) AS multi_location_packages
-      FROM packages
+        local_packages AS total_packages,
+        local_priority_packages AS total_priority_packages,
+        local_potential_waste AS total_potential_waste,
+        local_budget AS total_budget,
+        0 AS unmapped_packages,
+        0 AS multi_location_packages
+      FROM region_metrics
+      INNER JOIN regions ON regions.region_key = region_metrics.region_key
+      WHERE (regions.region_name LIKE '%Kab%Bandung%' OR regions.display_name LIKE '%Kab%Bandung%')
+      AND regions.region_name NOT LIKE '%Barat%'
     `)
     .get();
 }
@@ -296,6 +300,8 @@ function getRegionRows(db) {
         region_metrics.absurd_severity_packages
       FROM regions
       INNER JOIN region_metrics ON region_metrics.region_key = regions.region_key
+      WHERE (regions.region_name LIKE '%Kab%Bandung%' OR regions.display_name LIKE '%Kab%Bandung%') 
+      AND regions.region_name NOT LIKE '%Barat%'
       ORDER BY
         region_metrics.total_potential_waste DESC,
         region_metrics.total_priority_packages DESC,
@@ -810,9 +816,40 @@ function getOwnerPackages(db, requestQuery) {
   };
 }
 
+function getOPDBudgetBreakdown(db) {
+  return db
+    .prepare(`
+      SELECT 
+        satker AS name, 
+        SUM(budget) AS total_budget
+      FROM packages 
+      WHERE owner_name = 'Kab. Bandung' 
+        AND satker IS NOT NULL
+      GROUP BY satker 
+      ORDER BY total_budget DESC 
+      LIMIT 5
+    `)
+    .all();
+}
+
+// Data Asli Tren Pemberdayaan UMKM Kab. Bandung (Sumber: DISKOPUKM/052)
+function getUMKMPotentialData() {
+  return [
+    { tahun: 2019, jumlah: 401 },
+    { tahun: 2020, jumlah: 582 },
+    { tahun: 2021, jumlah: 361 },
+    { tahun: 2022, jumlah: 1171 },
+    { tahun: 2023, jumlah: 2330 },
+    { tahun: 2024, jumlah: 2922 },
+    { tahun: 2025, jumlah: 1999 }
+  ];
+}
+
 module.exports = {
+  getOPDBudgetBreakdown,
   getBootstrapPayload,
   getOwnerPackages,
   getRegionPackages,
   getProvincePackages,
+  getUMKMPotentialData,
 };
