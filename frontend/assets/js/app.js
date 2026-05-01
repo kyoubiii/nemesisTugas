@@ -1,5 +1,5 @@
 (() => {
-  const API_BASE_URL = (window.DASHBOARD_API_BASE_URL || "https://482znt-3000.csb.app").replace(/\/$/, "");
+  const API_BASE_URL = (window.DASHBOARD_API_BASE_URL || "https://9g4qcr-3000.csb.app/api").replace(/\/$/, "");
 
   if (!window.maplibregl || !window.AuditMap) {
     console.error("MapLibre GL or AuditMap failed to load.");
@@ -1483,7 +1483,7 @@ function renderSidebarContent() {
     document.getElementById('modalUMKM').style.display = 'block';
     
     try {
-        const response = await fetch('https://482znt-3000.csb.app/api/stats/potensi-umkm');
+        const response = await fetch('https://9g4qcr-3000.csb.app/api/stats/potensi-umkm');
         const data = await response.json(); 
         
         // --- 1. RENDER GRAFIK TREN ---
@@ -1535,7 +1535,7 @@ function renderSidebarContent() {
     document.getElementById('modalGrafikOPD').style.display = 'block';
     
     try {
-        const response = await fetch('https://482znt-3000.csb.app/api/stats/opd-breakdown'); 
+        const response = await fetch('https://9g4qcr-3000.csb.app/api/stats/opd-breakdown'); 
         const data = await response.json();
         
         if (!data || data.length === 0) {
